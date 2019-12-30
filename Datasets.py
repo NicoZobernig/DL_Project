@@ -19,6 +19,7 @@ class ZSLDataset(Dataset):
         self.classes = pd.read_csv(dataset_path+'/classes.txt', index_col=0, header=0)
         self.labels = pd.read_csv(dataset_path+'/filenames_labels.txt', index_col=0, header=0)
         self.class_embeddings = pd.read_csv(dataset_path+'/glove_embeddings_300.txt', index_col=0, header=0)
+        self.image_embeddings = pd.read_csv(dataset_path+'/resnet101_image_embeddings.txt', index_col=0, header=0)
         self.image_path = image_path
         self.transform = transform
         self.use_predicates = use_predicates
@@ -32,25 +33,26 @@ class ZSLDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        filename, class_id = self.labels.iloc[idx]
+        filename, class_id = self.labels.loc[idx]
         class_label = self.classes.loc[class_id].values[0]
 
-        img_name = os.path.join(self.image_path, filename)
-        image = cv2.imread(img_name)
+        # img_name = os.path.join(self.image_path, filename)
+        # image = cv2.imread(img_name)
+        image_embedding = torch.tensor(self.image_embeddings.loc[idx].values)
         class_embedding = torch.tensor(self.class_embeddings.loc[class_label].values)
 
         if self.use_predicates:
             class_predicate = torch.tensor(self.class_predicates.loc[class_id].values)
             sample = {'class_id': class_id,
                       'class_label': class_label,
-                      'image': image,
-                      'class_predicates': class_predicate,
-                      'class_embedding': class_embedding
+                      'image_embedding': image_embedding,
+                      'class_embedding': class_embedding,
+                      'class_predicates': class_predicate
                       }
         else:
             sample = {'class_id': class_id,
                       'class_label': class_label,
-                      'image': image,
+                      'image_embedding': image_embedding,
                       'class_embedding': class_embedding
                       }
 
@@ -65,6 +67,7 @@ class ZSLDataset(Dataset):
         print('------------DATASET INFORMATION------------')
         print('N° Samples: ', self.__len__())
         print('N° Classes: ', len(self.classes))
+        print('Image Embedding size: ', self.image_embeddings.shape[1])
         print('Class Embedding size: ', self.class_embeddings.shape[1], '({} classes found in word embedding)'.format(self.class_embeddings.shape[0]))
         if self.use_predicates:
             print('N° predicates/attributes: ', self.class_predicates.shape[1])
