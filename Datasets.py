@@ -72,6 +72,7 @@ class ZSLDataset(Dataset):
         if self.use_predicates:
             print('N° predicates/attributes: ', self.class_predicates.shape[1])
         print('-------------------------------------------\n')
+
 class SUNDataset(Dataset):
     """Scene Understanding with attributes dataset"""
 
@@ -91,9 +92,8 @@ class SUNDataset(Dataset):
         self.transform = transform
         self.use_predicates = use_predicates
         if self.use_predicates:
-        	self.train_list= pd.read_csv(dataset_path+'train.txt', sep=" ", header =None)
-        	self.test_list= pd.read_csv(dataset_path+'test.txt', sep=" ", header =None)
-        	self.attribute_list= [line.rstrip('\n') for line in open(dataset_path+'attribute_list.txt')]
+            self.norm_attribute_list= pd.read_csv(dataset_path+'attribute_vector_class.txt', sep=",", header=None)
+            self.attribute_list= pd.read_csv(dataset_path+'orig_attribute_vector_class.txt', sep=",", header=None)
 
     def __len__(self):
         return len(self.labels)
@@ -107,35 +107,20 @@ class SUNDataset(Dataset):
         #class_label = self.classes.loc[class_id].values[0]
         img_name = os.path.join(self.image_path, filename)
         image = cv2.imread(img_name)
-        v=torch.from_numpy(self.class_embeddings.iloc[class_id-1][2:].values)
+        v=self.class_embeddings.iloc[class_id-1][2:].values
         #print(self.class_embeddings.iloc[class_id-1][2:].values[0].dtype)
-        class_embedding = torch.tensor(v)
+        class_embedding = torch.tensor(v.astype(float))
+
+        #class_label = self.classes.loc[class_id].values[0]
 
         if self.use_predicates:
-        	tr_df= self.train_list
-        	ts_df=self.test_list
-        	tr_df.columns=['images','attributes']
-        	ts_df.columns=['images','attributes']
-        	l1=list(tr_df['images'])
-        	attr_vec = [0] * 102
-        	if filename in l1:
-        		n1=tr_df.loc[tr_df['images'] == filename, 'attributes'].values[0]
-        		att_idx=[int(s) for s in n1.split(',')]
-        		img_attributes=[self.attribute_list[i] for i in att_idx]
-        		sample_type='train sample'
-        	else:
-        		n1=ts_df.loc[ts_df['images'] == filename, 'attributes'].values[0]
-        		att_idx=[int(s) for s in n1.split(',')]
-        		img_attributes=[self.attribute_list[i] for i in att_idx]
-        		sample_type='test sample'
-        	for i in att_idx:
-        		attr_vec[i]=1
+            class_predicate = torch.tensor(self.norm_attribute_list.iloc[class_id-1].values)
 
-        	sample = {'sample_type': sample_type,'class_id': class_id,'class_label': class_name,'sub_class_label': sub_class_name,'image': image,'image_predicates': img_attributes,'attribute_vector': attr_vec}#'class_embedding': class_embedding,}
+            sample = {'class_id': class_id,'class_label': class_name,'sub_class_label': sub_class_name,'image': image,'attribute_vector': class_predicate,'class_embedding': class_embedding}
         else:
-        	sample = {'class_id': class_id,'class_label': class_name,'sub_class_label': sub_class_name,'image': image}#'class_embedding': class_embedding}
+            sample = {'class_id': class_id,'class_label': class_name,'sub_class_label': sub_class_name,'image': image,'class_embedding': class_embedding}
         if self.transform:
-        	sample = self.transform(sample)
+            sample = self.transform(sample)
 
         return sample
 
@@ -149,7 +134,6 @@ class SUNDataset(Dataset):
         if self.use_predicates:
             print('N° predicates/attributes: ', len(self.attribute_list))
         print('-------------------------------------------\n')
-
 #
 # class AwA2Dataset(Dataset):
 #     """Animals with Attributes dataset."""
