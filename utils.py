@@ -34,6 +34,7 @@ def get_word_embedding_glove(file='', label='', alpha=0.5):
                     found = True
         if not found:
             print('Could not find '+ sub_label)
+            return found_labels, [] #return epty lists
     if not len(found_labels) == 1:
         if len(found_labels) == 2:
             word_embedding = (1 - alpha) * word_embeddings[0] + alpha * word_embeddings[1]
