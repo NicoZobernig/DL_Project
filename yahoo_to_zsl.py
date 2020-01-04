@@ -170,7 +170,7 @@ for i in range(len(trainset)):
         
 out_df = pd.DataFrame(embeddings, columns=range(embeddings[0].shape[0]))
 out_df.insert(0, 'sample_id', range(len(embeddings)))
-out_df.to_csv(os.path.join(trainpath, 'irevnet_embeddings.txt'), sep=',', index=False)
+out_df.to_csv(os.path.join(trainpath, 'irevnet_image_embeddings.txt'), sep=',', index=False)
         
 del embeddings, out_df
 
@@ -208,7 +208,7 @@ for i in range(len(testset)):
         
 out_df = pd.DataFrame(embeddings, columns=range(embeddings[0].shape[0]))
 out_df.insert(0, 'sample_id', range(len(embeddings)))
-out_df.to_csv(os.path.join(testpath, 'irevnet_embeddings.txt'), sep=',', index=False)
+out_df.to_csv(os.path.join(testpath, 'irevnet_image_embeddings.txt'), sep=',', index=False)
         
 del embeddings, out_df
 
