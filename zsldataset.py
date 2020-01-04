@@ -18,12 +18,12 @@ class ZSLDataset(Dataset):
         self.classes = pd.read_csv(dataset_path+'/classes.txt', index_col=0, header=0)
         self.labels = pd.read_csv(dataset_path+'/filenames_labels.txt', index_col=0, header=0)
         self.class_embeddings = pd.read_csv(dataset_path+'/glove_embeddings_300.txt', index_col=0, header=0)
-        
+
         if not use_irevnet:
             self.image_embeddings = pd.read_csv(dataset_path+'/resnet101_image_embeddings.txt', index_col=0, header=0)
         else:
             self.image_embeddings = pd.read_csv(dataset_path+'/irevnet_image_embeddings.txt', index_col=0, header=0)
-            
+
         self.transform = transform
         self.use_predicates = use_predicates
         
@@ -40,8 +40,6 @@ class ZSLDataset(Dataset):
         filename, class_id = self.labels.loc[idx]
         class_label = self.classes.loc[class_id].values[0]
 
-        # img_name = os.path.join(self.image_path, filename)
-        # image = cv2.imread(img_name)
         image_embedding = torch.tensor(self.image_embeddings.loc[idx].values)
         class_embedding = torch.tensor(self.class_embeddings.loc[class_label].values)
 
@@ -69,12 +67,12 @@ class ZSLDataset(Dataset):
         """ display information about dataset """
         print('\n')
         print('------------DATASET INFORMATION------------')
-        print('N° Samples: ', self.__len__())
-        print('N° Classes: ', len(self.classes))
+        print('N_Samples: ', self.__len__())
+        print('N_Classes: ', len(self.classes))
         print('Image Embedding size: ', self.image_embeddings.shape[1])
         print('Class Embedding size: ', self.class_embeddings.shape[1], '({} classes found in word embedding)'.format(self.class_embeddings.shape[0]))
         if self.use_predicates:
-            print('N° predicates/attributes: ', self.class_predicates.shape[1])
+            print('N_predicates/attributes: ', self.class_predicates.shape[1])
         print('-------------------------------------------\n')
 
 #
