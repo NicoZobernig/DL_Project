@@ -13,13 +13,15 @@ class ContinuousMap(nn.Module):
         
         self.bn1 = nn.BatchNorm1d(width)
         self.bn2 = nn.BatchNorm1d(width)
+        
+        self.relu = nn.ReLU()
 
 
     def forward(self, x):
-        x = F.relu(self.fc1(x))
+        x = self.relu(self.fc1(x))
         x = self.bn1(x)
         
-        x = F.relu(self.fc2(x))
+        x = self.relu(self.fc2(x))
         x = self.bn2(x)
         
         x = self.fc3(x)
@@ -41,18 +43,21 @@ class ContinuousMapResidual(nn.Module):
         self.bn2 = nn.BatchNorm1d(width)
         self.bn3 = nn.BatchNorm1d(width)
 
+        self.relu = nn.ReLU()
+
+
 
     def forward(self, x):
-        x = F.relu(self.fc1(x))
+        x = self.relu(self.fc1(x))
         x = self.bn1(x)
         
         identity = x
-        x = F.relu(self.fc2(x))
+        x = self.relu(self.fc2(x))
         x = self.bn2(x)
         x = x + identity
         
         identity = x
-        x = F.relu(self.fc3(x))
+        x = self.relu(self.fc3(x))
         x = self.bn3(x)
         x = x + identity
         
