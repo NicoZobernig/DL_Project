@@ -179,6 +179,13 @@ print('- for test set')
 
 embeddings = []
 
+# there seems to be an issue with entry 1525 in the test set
+a,b,c,d = testset.data[1525]
+testset.data[1525] = (a,b,np.array([31., 22., 314., 314.]),d)
+
+a,b,c,d = testset.data[2210]
+testset.data[2210] = (a,b,np.array([0., 100., 333., 500.]),d)
+
 for i in range(len(testset)):
     d = testset[i]
     
