@@ -85,6 +85,7 @@ def main():
 
     margin = options.margin
 
+    validation_accuracy = []
     for e in range(options.n_epochs):
         v_to_s = v_to_s.train()
         s_to_v = s_to_v.train()
@@ -167,7 +168,12 @@ def main():
             avg_accuracy /= n
             avg_loss /= n
 
+            if e > 50:
+                validation_accuracy.append(avg_accuracy)
+
             print('Average acc.: {}, Average loss:{}\n\n'.format(avg_accuracy, avg_loss))
+
+    print('Mean Accuracy: {0}'.format(np.mean(validation_accuracy)))
 
 
 if __name__ == '__main__':

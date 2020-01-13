@@ -13,6 +13,7 @@ def parse_args():
     parser.add_argument('-option3', action='store_const', const=True, default=False, help='test loss - train loss')
     parser.add_argument('-n_cols', default=4, type=int, help='n_cols in legend')
     parser.add_argument('-grid_off', action='store_const', const=True, default=False, help='no grid in plots')
+    parser.add_argument('-cv_res', action='store_const', const=True, default=False, help='if using results from crossval')
 
     return parser.parse_known_args()
 
@@ -20,6 +21,7 @@ def parse_args():
 def get_accuracy_results(path):
     results = []
     splits = 0
+    mean_accuracy = []
     with open(path) as reader:
         for line in reader:
             if 'Average acc.' in line:
@@ -29,8 +31,10 @@ def get_accuracy_results(path):
 
             elif 'split {0} done'.format(splits) in line:
                 splits += 1
+            elif 'Mean Accuracy' in line:
+                mean_accuracy.append(float(line.split(': ')[1].replace(' ', '')))
 
-    return np.split(np.asarray(results, dtype=float), max(1, splits))
+    return np.split(np.asarray(results, dtype=float), max(1, splits)), np.asarray(mean_accuracy, dtype=float)
 
 
 def get_test_losses(path):
@@ -83,7 +87,12 @@ def main(path):
         cmap = plt.get_cmap('rainbow')
         colors = cmap(np.linspace(0, 1, n-10, endpoint=False))
         color_iter = iter(colors)
+    elif options.cv_res and n >= 4:
+        cmap = plt.get_cmap('rainbow')
+        colors = cmap(np.linspace(0, 1, 3*n - 10, endpoint=False))
+        color_iter = iter(colors)
 
+    n = 1
     if options.option1 or options.option2 or options.option3:
         fig, [ax1, ax2] = plt.subplots(2, 1, sharex=True, figsize=(12, 6.5), dpi=100)
         # fig.suptitle(f'ZS Results - AwA2 Dataset - {path[:3]} - lr: {path[4:8]} - surj: {path[-5:-1]}', fontsize=14)  # specific
@@ -91,70 +100,70 @@ def main(path):
 
         for i, file in enumerate(sorted(files)):
             if options.option1:
-                accuracy = get_accuracy_results(file)
+                accuracy, mean_accuracy = get_accuracy_results(file)
+                train_loss = get_training_losses(file)
 
                 ax1.set_ylim([0, 0.8])
-                for j in range(len(accuracy)):
-                    if i >= 10:
-                        c = next(color_iter)
-                        ax1.plot(range(5, 5 * len(accuracy[j]) + 1, 5), accuracy[j], '-', label=file.split('/')[2], color=c)
-                    else:
-                        ax1.plot(range(5, 5 * len(accuracy[j]) + 1, 5), accuracy[j], '-', label=file.split('/')[2])
-
-                train_loss = get_training_losses(file)
                 ax2.set_ylim([0, 1])
-                for j in range(len(train_loss)):
+                for j in range(len(accuracy)):
+                    label = file.split('/')[2]
                     train_loss[j] /= np.amax(train_loss[j])
-                    if i >= 10:
-                        ax2.plot(range(1, len(train_loss[j]) + 1), train_loss[j], '-', label=file.split('/')[2], color=c)
+                    if len(mean_accuracy) > 0:
+                        label += ' - (' + '{:.3f}'.format(mean_accuracy[j]) + ')'
+                    if n > 10:
+                        c = next(color_iter)
+                        ax1.plot(range(5, 5 * len(accuracy[j]) + 1, 5), accuracy[j], '-', label=label, color=c)
+                        ax2.plot(range(1, len(train_loss[j]) + 1), train_loss[j], '-', label=label, color=c)
                     else:
-                        ax2.plot(range(1, len(train_loss[j]) + 1), train_loss[j], '-', label=file.split('/')[2])
+                        ax1.plot(range(5, 5 * len(accuracy[j]) + 1, 5), accuracy[j], '-', label=label)
+                        ax2.plot(range(1, len(train_loss[j]) + 1), train_loss[j], '-', label=label)
+
+                    n += 1
 
                 ax1.set_ylabel('Test Accuracy')
                 ax2.set_ylabel('Training Loss')
 
             elif options.option2:
-                accuracy = get_accuracy_results(file)
-                ax1.set_ylim([0, 0.8])
-                for j in range(len(accuracy)):
-                    if i >= 10:
-                        c = next(color_iter)
-                        ax1.plot(range(5, 5 * len(accuracy) + 1, 5), accuracy, '-', label=file.split('/')[2], color=c)
-                    else:
-                        ax1.plot(range(5, 5 * len(accuracy) + 1, 5), accuracy, '-', label=file.split('/')[2])
-
+                accuracy, mean_accuracy = get_accuracy_results(file)
                 test_losses = get_test_losses(file)
+
+                ax1.set_ylim([0, 0.8])
                 ax2.set_ylim([0, 1])
-                for j in range(len(test_losses)):
+                for j in range(len(accuracy)):
+                    label = file.split('/')[2]
                     test_losses[j] /= np.amax(test_losses[j])
-                    if i >= 10:
-                        ax2.plot(range(5, 5 * len(test_losses[j]) + 1, 5), test_losses[j], '-', label=file.split('/')[2],
-                                 color=c)
+                    if len(mean_accuracy) > 0:
+                        label += ' - (' + '{:.3f}'.format(mean_accuracy[j]) + ')'
+                    if n > 10:
+                        c = next(color_iter)
+                        ax1.plot(range(5, 5 * len(accuracy) + 1, 5), accuracy, '-', label=label, color=c)
+                        ax2.plot(range(5, 5 * len(test_losses[j]) + 1, 5), test_losses[j], '-', label=file.split('/')[2], color=c)
                     else:
+                        ax1.plot(range(5, 5 * len(accuracy) + 1, 5), accuracy, '-', label=label)
                         ax2.plot(range(5, 5 * len(test_losses[j]) + 1, 5), test_losses[j], '-', label=file.split('/')[2])
+
+                    n += 1
 
                 ax1.set_ylabel('Test Accuracy')
                 ax2.set_ylabel('Test Loss')
             else:
-
                 test_losses = get_test_losses(file)
+                train_loss = get_training_losses(file)
+
                 ax1.set_ylim([0, 1])
+                ax2.set_ylim([0, 1])
                 for j in range(len(test_losses)):
                     test_losses[j] /= np.amax(test_losses[j])
-                    if i >= 10:
+                    train_loss[j] /= np.amax(train_loss[j])
+                    if n > 10:
                         c = next(color_iter)
                         ax1.plot(range(5, 5 * len(test_losses[j]) + 1, 5), test_losses[j], '-', label=file.split('/')[2], color=c)
-                    else:
-                        ax1.plot(range(5, 5 * len(test_losses[j]) + 1, 5), test_losses[j], '-', label=file.split('/')[2])
-
-                train_loss = get_training_losses(file)
-                ax2.set_ylim([0, 1])
-                for j in range(len(train_loss)):
-                    train_loss[j] /= np.amax(train_loss[j])
-                    if i >= 10:
                         ax2.plot(range(1, len(train_loss[j]) + 1), train_loss[j], '-', label=file.split('/')[2], color=c)
                     else:
+                        ax1.plot(range(5, 5 * len(test_losses[j]) + 1, 5), test_losses[j], '-', label=file.split('/')[2])
                         ax2.plot(range(1, len(train_loss[j]) + 1), train_loss[j], '-', label=file.split('/')[2])
+
+                    n += 1
 
                 ax1.set_ylabel('Test Loss')
                 ax2.set_ylabel('Training Loss')
@@ -169,32 +178,30 @@ def main(path):
         fig.suptitle(f'ZS Results - AwA2 Dataset - {path}', fontsize=14)  # any
 
         for i, file in enumerate(sorted(files)):
-            accuracy = get_accuracy_results(file)
-            ax1.set_ylim([0, 0.8])
-            for j in range(len(accuracy)):
-                if i >= 10:
-                    c = next(color_iter)
-                    ax1.plot(range(5, 5*len(accuracy[j])+1, 5), accuracy[j], '-', label=file.split('/')[2], color=c)
-                else:
-                    ax1.plot(range(5, 5*len(accuracy[j])+1, 5), accuracy[j], '-', label=file.split('/')[2])
-
+            accuracy, mean_accuracy = get_accuracy_results(file)
             test_losses = get_test_losses(file)
-            ax2.set_ylim([0, 1])
-            for j in range(len(test_losses)):
-                test_losses[j] /= np.amax(test_losses[j])
-                if i >= 10:
-                    ax2.plot(range(5, 5*len(test_losses[j])+1, 5), test_losses[j], '-', label=file.split('/')[2], color=c)
-                else:
-                    ax2.plot(range(5, 5*len(test_losses[j])+1, 5), test_losses[j], '-', label=file.split('/')[2])
-
             train_loss = get_training_losses(file)
+
+            ax1.set_ylim([0, 0.8])
+            ax2.set_ylim([0, 1])
             ax3.set_ylim([0, 1])
-            for j in range(len(train_loss)):
+            for j in range(len(accuracy)):
+                label = file.split('/')[2]
+                test_losses[j] /= np.amax(test_losses[j])
                 train_loss[j] /= np.amax(train_loss[j])
-                if i >= 10:
+                if len(mean_accuracy) > 0:
+                    label += ' - (' + '{:.3f}'.format(mean_accuracy[j]) + ')'
+                if n > 10:
+                    c = next(color_iter)
+                    ax1.plot(range(5, 5*len(accuracy[j])+1, 5), accuracy[j], '-', label=label, color=c)
+                    ax2.plot(range(5, 5*len(test_losses[j])+1, 5), test_losses[j], '-', label=file.split('/')[2], color=c)
                     ax3.plot(range(1, len(train_loss[j])+1), train_loss[j], '-', label=file.split('/')[2], color=c)
                 else:
+                    ax1.plot(range(5, 5*len(accuracy[j])+1, 5), accuracy[j], '-', label=label)
+                    ax2.plot(range(5, 5*len(test_losses[j])+1, 5), test_losses[j], '-', label=file.split('/')[2])
                     ax3.plot(range(1, len(train_loss[j])+1), train_loss[j], '-', label=file.split('/')[2])
+
+                n += 1
 
         ax1.set_ylabel('Test Accuracy')
         ax2.set_ylabel('Test Loss')
@@ -205,7 +212,7 @@ def main(path):
             ax2.grid(which='both')
             ax3.grid(which='both')
 
-    handles, labels = ax2.get_legend_handles_labels()
+    handles, labels = ax1.get_legend_handles_labels()
     fig.legend(handles, labels, loc='lower center', ncol=options.n_cols, prop={'size': 8}, frameon=False)
     plt.xlabel('Epochs')
     plt.subplots_adjust(hspace=0.5)
