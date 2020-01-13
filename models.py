@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class ContinuousMap(nn.Module):
 
     def __init__(self, dim_source, dim_dest, width):
@@ -16,7 +17,6 @@ class ContinuousMap(nn.Module):
         
         self.relu = nn.ReLU()
 
-
     def forward(self, x):
         x = self.relu(self.fc1(x))
         x = self.bn1(x)
@@ -27,7 +27,8 @@ class ContinuousMap(nn.Module):
         x = self.fc3(x)
         
         return x
-    
+
+
 class EncoderAttributes(nn.Module):
 
     def __init__(self, dim_source1, dim_source2, dim_target, width):
@@ -41,7 +42,6 @@ class EncoderAttributes(nn.Module):
         self.bn2 = nn.BatchNorm1d(width)
         
         self.relu = nn.ReLU()
-
 
     def forward(self, features1, features2):
         x = self.relu(self.fc1(features1))
@@ -73,24 +73,22 @@ class DecoderAttributes(nn.Module):
         
         self.width = width
 
-
     def forward(self, x):
         x = self.relu(self.fc1(x))
         x = self.bn1(x)
         
         x = self.fc2(x)
-        out1 = x[:,self.width:]
-        x = x[:,:self.width]
+        out1 = x[:, self.width:]
+        x = x[:, :self.width]
         
         x = self.relu(x)
         x = self.bn2(x)
         
         out2 = self.fc3(x)
-        
+
         return out1, out2
     
-    
-    
+
 class ContinuousMapResidual(nn.Module):
 
     def __init__(self, dim_source, dim_dest, width):
@@ -106,8 +104,6 @@ class ContinuousMapResidual(nn.Module):
         self.bn3 = nn.BatchNorm1d(width)
 
         self.relu = nn.ReLU()
-
-
 
     def forward(self, x):
         x = self.relu(self.fc1(x))
@@ -126,7 +122,3 @@ class ContinuousMapResidual(nn.Module):
         x = self.fc4(x)
         
         return x
-    
-    
-
-    

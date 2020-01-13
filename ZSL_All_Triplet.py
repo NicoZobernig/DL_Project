@@ -1,49 +1,12 @@
 import torch
 import torch.cuda
 import numpy as np
-import argparse
 
 from torch.utils.data import DataLoader
 from zsldataset import ZSLDataset
-from models import ContinuousMap
+from models import EncoderAttributes, DecoderAttributes
 
-
-def parse_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--leonhard', type=bool, default=False)
-    parser.add_argument('--use_irevnet', type=bool, default=True)  # use iRevNet features or ResNet101 features batch_size
-
-    parser.add_argument('--batch_size', type=int, default=128)
-    parser.add_argument('--n_epochs', type=int, default=100)
-
-    parser.add_argument('--optimizer', type=str, default='sgd')
-
-    parser.add_argument('--learning_rate', type=float, default=1e-3)
-
-    parser.add_argument('--alphas', nargs='+', type=float, default=[20, 1e-3, 1e-3])
-
-    parser.add_argument('--margin', type=int, default=3)
-
-    parser.add_argument('--gamma', type=float, default=0.3)
-
-    parser.add_argument('--momentum', type=float, default=0.5)
-
-    return parser.parse_args()
-
-
-def dist_matrix(batch1, batch2):
-    delta = batch1.unsqueeze(1) - batch2.unsqueeze(0)
-    d_matrix = (delta * delta).mean(dim=-1)
-
-    return d_matrix
-
-
-def mag(u):
-    return torch.dot(u, u)
-
-
-def dist(u, v):
-    return torch.dot(u - v, u - v)
+from ZSL_Words_L2 import parse_args, dist_matrix
 
 
 def main():
@@ -57,15 +20,17 @@ def main():
         train_path = 'Data/AwA2/train_set'
         test_path = 'Data/AwA2/test_set'
 
-    trainset = ZSLDataset(train_path, use_predicates=False, use_irevnet=options.use_irevnet)
-    testset = ZSLDataset(test_path, use_predicates=False, use_irevnet=options.use_irevnet)
+    trainset = ZSLDataset(train_path, use_predicates=True, use_irevnet=options.use_irevnet)
+    testset = ZSLDataset(test_path, use_predicates=True, use_irevnet=options.use_irevnet)
 
     num_classes = trainset.classes.shape[0]
 
     dim_semantic = trainset[0]['class_embedding'].shape[0]
     dim_visual = trainset[0]['image_embedding'].shape[0]
+    dim_attributes = trainset[0]['class_predicates'].shape[0]
 
-    all_class_embeddings = torch.tensor(np.array(trainset.class_embeddings)).cuda().float()
+    all_class_embeddings = torch.tensor(np.array(trainset.class_embeddings)).float().cuda()
+    all_class_predicates = torch.tensor(np.array(trainset.class_predicates)).float().cuda()
     classes_enum = torch.tensor(np.array(range(num_classes), dtype=np.int64)).cuda()
 
     query_ids = set([testset[i]['class_id'] for i in range(len(testset))])
@@ -74,8 +39,15 @@ def main():
     query_mask[ids] = 1
     query_mask = torch.tensor(query_mask, dtype=torch.int64).cuda()
 
-    v_to_s = ContinuousMap(dim_source=dim_visual, dim_dest=dim_semantic, width=512).cuda()
-    s_to_v = ContinuousMap(dim_source=dim_semantic, dim_dest=dim_visual, width=512).cuda()
+    v_to_s = DecoderAttributes(dim_source=dim_visual,
+                               dim_target1=dim_attributes,
+                               dim_target2=dim_semantic,
+                               width=512).cuda()
+
+    s_to_v = EncoderAttributes(dim_source1=dim_semantic,
+                               dim_source2=dim_attributes,
+                               dim_target=dim_visual,
+                               width=512).cuda()
 
     if options.optimizer == 'adam':
         optimizer = torch.optim.Adam(list(v_to_s.parameters()) + list(s_to_v.parameters()),
@@ -88,6 +60,8 @@ def main():
                                     momentum=options.momentum,
                                     weight_decay=5e-3,
                                     nesterov=True)
+
+    positive_part = torch.nn.ReLU().cuda()
 
     trainloader = DataLoader(trainset,
                              batch_size=options.batch_size,
@@ -103,11 +77,14 @@ def main():
                             pin_memory=True,
                             drop_last=True)
 
-    alpha1 = options.alphas[0]  # l2
+    gamma = options.gamma
+
+    alpha1 = options.alphas[0]  # triplet
     alpha2 = options.alphas[1]  # surjection
     alpha3 = options.alphas[2]  # l2 regularization
 
-    # Main Loop
+    margin = options.margin
+
     for e in range(options.n_epochs):
         v_to_s = v_to_s.train()
         s_to_v = s_to_v.train()
@@ -116,32 +93,41 @@ def main():
         for i, sample in enumerate(trainloader):
             optimizer.zero_grad()
 
-            batch_visual = sample['image_embedding'].cuda().float()
+            batch_visual = sample['image_embedding'].float().cuda()
+
             batch_classes = sample['class_id'].cuda() - 1
 
-            e_hat = v_to_s(s_to_v(all_class_embeddings))
-            delta = (e_hat - all_class_embeddings)
+            e_hat = v_to_s(s_to_v(all_class_embeddings, all_class_predicates))
+            delta = (e_hat[1] - all_class_embeddings)
             surjection_loss = (delta * delta).sum(dim=-1).mean()
+            delta = (e_hat[0] - all_class_predicates)
+            surjection_loss = (1 - gamma) * surjection_loss + gamma * (delta * delta).sum(dim=-1).mean()
 
             s_out = v_to_s(batch_visual)
+            s_attr, s_word = s_out
 
             same_class = classes_enum.unsqueeze(0) == batch_classes.unsqueeze(1)
             same_class = same_class.detach()
 
-            l2_dist_loss = (dist_matrix(s_out, all_class_embeddings) * same_class.float()).mean()
-            l2_loss = (s_out * s_out).sum(dim=-1).mean()
-            loss = alpha1 * l2_dist_loss + alpha2 * surjection_loss + alpha3 * l2_loss
+            d_matrix = (1 - gamma) * dist_matrix(s_word, all_class_embeddings) + gamma * dist_matrix(s_attr, all_class_predicates)
+
+            closest_negative, _ = (d_matrix + same_class.float() * 1e6).min(dim=-1)
+            furthest_positive, _ = (d_matrix * same_class.float()).max(dim=-1)
+
+            l2_loss = (1 - gamma) * (s_word * s_word).sum(dim=-1).mean() + gamma * (s_attr * s_attr).sum(dim=-1).mean()
+            loss = positive_part(furthest_positive - closest_negative + margin)
+            loss = alpha1 * loss.mean() + alpha2 * surjection_loss + alpha3 * l2_loss
 
             loss.backward()
             optimizer.step()
 
             running_loss += loss.item()
         else:
-            print('Training Loss epoch {0}: {1}'.format(e, running_loss/len(trainloader)))
+            print('Training Loss epoch {0}: {1}'.format(e+1, running_loss/len(trainloader)))
 
-        if (e + 1) % 50 == 0:
+        if (e + 1) % 30 == 0:
             for param_group in optimizer.param_groups:
-                param_group['lr'] = param_group['lr'] * 0.7
+                param_group['lr'] = param_group['lr'] * 0.5
 
         if (e + 1) % 5 == 0:
             print('\n\n- Evaluation on epoch {}'.format(e+1))
@@ -157,21 +143,23 @@ def main():
                 for i, sample in enumerate(testloader):
                     n += 1
 
-                    batch_visual = sample['image_embedding'].cuda().float()
+                    batch_visual = sample['image_embedding'].float().cuda()
                     batch_classes = sample['class_id'].cuda() - 1
 
                     s_out = v_to_s(batch_visual)
+                    s_attr, s_word = s_out
 
                     same_class = classes_enum.unsqueeze(0) == batch_classes.unsqueeze(1)
                     same_class = same_class.detach()
 
-                    d_matrix = dist_matrix(s_out, all_class_embeddings)
+                    d_matrix = (1 - gamma) * dist_matrix(s_word, all_class_embeddings) + gamma * dist_matrix(s_attr, all_class_predicates)
 
-                    c_hat = (d_matrix + (1 - query_mask).float() * 1e6).argmin(dim=-1)
+                    c_hat = (d_matrix + (1 - query_mask).float() * 1e9).argmin(dim=-1)
 
-                    l2_dist_loss = (dist_matrix(s_out, all_class_embeddings) * same_class.float()).mean()
+                    closest_negative, _ = (d_matrix + same_class.float() * 1e6).min(dim=-1)
+                    furthest_positive, _ = (d_matrix * same_class.float()).max(dim=-1)
 
-                    loss = alpha1 * l2_dist_loss
+                    loss = alpha1 * furthest_positive.mean()
 
                     avg_loss += loss.item()
                     avg_accuracy += (c_hat == batch_classes).float().mean().item()

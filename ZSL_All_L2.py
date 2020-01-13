@@ -1,4 +1,5 @@
 import torch
+import torch.cuda
 import numpy as np
 
 from torch.utils.data import DataLoader
@@ -28,8 +29,8 @@ def main():
     dim_visual = trainset[0]['image_embedding'].shape[0]
     dim_attributes = trainset[0]['class_predicates'].shape[0]
 
-    all_class_embeddings = torch.tensor(np.array(trainset.class_embeddings)).cuda().float()
-    all_class_predicates = torch.tensor(np.array(trainset.class_predicates)).cuda().float()
+    all_class_embeddings = torch.tensor(np.array(trainset.class_embeddings)).float().cuda()
+    all_class_predicates = torch.tensor(np.array(trainset.class_predicates)).float().cuda()
     classes_enum = torch.tensor(np.array(range(num_classes), dtype=np.int64)).cuda()
 
     query_ids = set([testset[i]['class_id'] for i in range(len(testset))])
@@ -38,19 +39,26 @@ def main():
     query_mask[ids] = 1
     query_mask = torch.tensor(query_mask, dtype=torch.int64).cuda()
 
-    v_to_s = DecoderAttributes(dim_source=dim_visual, dim_target1=dim_attributes, dim_target2=dim_semantic, width=512).cuda()
-    s_to_v = EncoderAttributes(dim_source1=dim_semantic, dim_source2=dim_attributes, dim_target=dim_visual, width=512).cuda()
+    v_to_s = DecoderAttributes(dim_source=dim_visual,
+                               dim_target1=dim_attributes,
+                               dim_target2=dim_semantic,
+                               width=512).cuda()
+
+    s_to_v = EncoderAttributes(dim_source1=dim_semantic,
+                               dim_source2=dim_attributes,
+                               dim_target=dim_visual,
+                               width=512).cuda()
 
     if options.optimizer == 'adam':
         optimizer = torch.optim.Adam(list(v_to_s.parameters()) + list(s_to_v.parameters()),
-                                     lr=1e-4,
+                                     lr=options.learning_rate,
                                      betas=(0.9, 0.999),
                                      weight_decay=3e-3)
     else:
         optimizer = torch.optim.SGD(list(v_to_s.parameters()) + list(s_to_v.parameters()),
-                                    lr=1e-4,
-                                    momentum=.9,
-                                    weight_decay=3e-3,
+                                    lr=options.learning_rate,
+                                    momentum=options.momentum,
+                                    weight_decay=5e-3,
                                     nesterov=True)
 
     trainloader = DataLoader(trainset,
@@ -67,11 +75,11 @@ def main():
                         pin_memory=True,
                         drop_last=True)
 
-    gamma = 0.4
+    gamma = options.gamma
 
-    alpha1 = 10  # l2
-    alpha2 = 1e-3  # surjection
-    alpha3 = 1e-3  # l2 reg
+    alpha1 = options.alphas[0]  # l2
+    alpha2 = options.alphas[1]  # surjection
+    alpha3 = options.alphas[2]  # l2 regularization
 
     for e in range(options.n_epochs):
         v_to_s = v_to_s.train()
