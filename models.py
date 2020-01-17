@@ -122,3 +122,22 @@ class ContinuousMapResidual(nn.Module):
         x = self.fc4(x)
         
         return x
+
+
+'Linear Decoder to compute a baseline'
+class LinearDecoderAttributes(nn.Module):
+
+    def __init__(self, dim_source, dim_target1, dim_target2, width):
+        super(LinearDecoderAttributes, self).__init__()
+        #
+        self.fc1 = nn.Linear(dim_source, width + dim_target1)
+        self.fc2 = nn.Linear(width, dim_target2)
+        self.width = width
+
+    def forward(self, x):
+        x = self.fc1(x)
+
+        out1 = x[:, self.width:]
+        x = x[:, :self.width]
+        out2 = self.fc2(x)
+        return out1, out2

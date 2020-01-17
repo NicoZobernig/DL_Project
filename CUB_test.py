@@ -25,8 +25,8 @@ print(torch_embedding_300.shape)
 
 # Test AwA2 Dataset structure
 test_with = CUBDataset(dataset_path='Data/CUB_200_2011/CUB_200_2011/',
-                        class_embedding_path='Data/CUB_200_2011/CUB_200_2011/CUB_glove_embedding.txt',
-                        image_path='Data/CUB_200_2011/CUB_200_2011/images')
+                       class_embedding_path='Data/CUB_200_2011/CUB_200_2011/CUB_glove_embedding.txt',
+                       image_path='Data/CUB/images')
 
 sample_with = test_with[0]
 print('Sample: ', sample_with.keys())
