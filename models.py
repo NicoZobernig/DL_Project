@@ -128,7 +128,7 @@ class ContinuousMapResidual(nn.Module):
 class LinearDecoderAttributes(nn.Module):
 
     def __init__(self, dim_source, dim_target1, dim_target2, width):
-        super(LinearDecoderAttributes, self).__init__()
+        super(DecoderAttributes, self).__init__()
         #
         self.fc1 = nn.Linear(dim_source, width + dim_target1)
         self.fc2 = nn.Linear(width, dim_target2)
