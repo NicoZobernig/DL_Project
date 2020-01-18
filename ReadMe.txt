@@ -81,3 +81,13 @@ zsldataset.py
  	ZSLDataset object containing the data read in from the data folders
 
 
+
+We provide the optimal parameter values for the model for each dataset:
+-----------------------------------------------------------------------
+APY: 	
+
+AWA2: python zsl_triplet_test.py Data/AwA2/ --batch_size 128 --n_epochs 50 --optimizer sgd --learning_rate 5e-3 --alphas 40 1e-3 1e-3 --margin 3 --gamma 0.3 --momentum 0.55 --weight_decay 3e-3
+
+CUB:	
+
+SUN:	
