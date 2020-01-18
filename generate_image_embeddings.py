@@ -23,9 +23,8 @@ model = iRevNet_ZSL(nBlocks=[6, 16, 72, 6], nStrides=[2, 2, 2, 2],
 model = model.cuda()
 model = model.eval()
 
-# %%
 d = torch.load('irevnet-pretrained.pth.tar')
-#d = torch.load('irevnet-pretrained.pth.tar', map_location=torch.device('cpu'))
+
 state_dict = d['state_dict']
 
 from collections import OrderedDict
@@ -40,18 +39,12 @@ model.load_state_dict(new_state_dict)
 
 
 
-# %%
 
 def pad_and_resize(img, desired_size):
     old_size = img.size  # old_size[0] is in (width, height) format
 
     ratio = float(desired_size) / max(old_size)
     new_size = tuple([int(x * ratio) for x in old_size])
-    # use thumbnail() or resize() method to resize the input image
-
-    # thumbnail is a in-place operation
-
-    # im.thumbnail(new_size, Image.ANTIALIAS)
 
     img = img.resize(new_size, Image.ANTIALIAS)
     # create a new image and paste the resized on it
@@ -63,53 +56,6 @@ def pad_and_resize(img, desired_size):
     return new_im
 
 
-# # %% md
-#
-# # Plot t-SNE embeddings
-#
-# # %%
-#
-# embeddings = []
-# names = []
-#
-# for i in range(300):
-#     d = dataset.get_image_label(np.random.choice(len(dataset)))
-#     img = d[0]
-#     img = pad_and_resize(img, 224)
-#
-#     with torch.no_grad():
-#         to_tensor = transforms.ToTensor()
-#         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-#                                          std=[0.229, 0.224, 0.225])
-#
-#         img_in = normalize(to_tensor(img)).unsqueeze(0).cuda()
-#
-#         features = model.forward_features(img_in)
-#
-#         embeddings.append(features.cpu().data.numpy())
-#         names.append(d[1])
-#
-# # %%
-#
-# X = np.array(embeddings).squeeze()
-#
-# # %%
-#
-# from sklearn.manifold import TSNE
-#
-# X_embedded = TSNE(n_components=2).fit_transform(X)
-# X_embedded.shape
-#
-# # %%
-#
-# # plt.figure(figsize=(12,12))
-# fig, ax = plt.subplots(figsize=(12, 12))
-# ax.scatter(X_embedded[:100, 0], X_embedded[:100, 1])
-#
-# for i, v in enumerate(X_embedded[:100]):
-#     ax.annotate(names[i], v)
-#
-# # %%
 dataset_path='Data/CUB/'
 image_path ='Data/CUB_200_2011/CUB_200_2011/images/'
 filenames = pd.read_csv(dataset_path+'/filenames_labels.txt', index_col=0, header=0)
@@ -124,7 +70,7 @@ for i in range(0, len(filenames)):
     left = bounding_boxes.iloc[i][1]
     upper = bounding_boxes.iloc[i][2]
     right = left + bounding_boxes.iloc[i][3]
-    lower  = upper + bounding_boxes.iloc[i][4]
+    lower = upper + bounding_boxes.iloc[i][4]
 
     img = img.crop((left, upper, right, lower))
     img = pad_and_resize(img, 224)
@@ -140,7 +86,6 @@ for i in range(0, len(filenames)):
 
         embeddings.append(features.cpu().data.numpy().squeeze().tolist())
 
-# %%
 
 
 
