@@ -7,16 +7,31 @@ We provide the Data used here: https://polybox.ethz.ch/index.php/s/wEcRlsPciDGwD
 	--> /train_set_i			...	training data for split i
 	--> /val_set_i				... 	validation data fro split i
 
---> All folders have the same file structure which is then used in the ZSLDataset python class (see below):
-	--> class_predicates.txt		...	file containing the attributes for each class
-	--> classes.txt				...	file containing all class labels with respective class id
-	--> filenames_labels.txt		...	file containing filenames and class id for each sample
-	--> glove_embeddings_300.txt		...	file containing GloVe word embeddings for each class label
-	--> irevnet_image_embeddings.txt	...	file containing image embeddings for each sample generated with iRevNet
-	--> resnet101_image_embeddings.txt	...	file containing image embeddings for each sample generated with ResNet101
+	--> All dataset folders have the same file structure which is then used in the ZSLDataset python class (see below):
+		--> class_predicates.txt		...	file containing the attributes for each class
+		--> classes.txt				...	file containing all class labels with respective class id
+		--> filenames_labels.txt		...	file containing filenames and class id for each sample
+		--> glove_embeddings_300.txt		...	file containing GloVe word embeddings for each class label
+		--> irevnet_image_embeddings.txt	...	file containing image embeddings for each sample generated with iRevNet
+		--> resnet101_image_embeddings.txt	...	file containing image embeddings for each sample generated with ResNet101
 
+	--> we provide the data for generalized zeros hot for APY in gzsl_train and gzsl_test
+
+
+--> SAE Folder:
+	--> data_preparation.m : This matlab file takes the following inputs:
+		1. att_splits.mat: This contains the attribute vetors per class and file indices of train, val and test sets used.
+		2. res101.mat: This file contains the ResNet features for each image, filenames of each image and file named 'labels' containing the class lables per sample image.
+		3. suncemb.txt/ cubcemb.txt/ awacemb.txt/ apycemb.txt: Glove embeddings per class for each dataset.
+	All these files are in the respective dataset folders eg. data/SUN/.. The above three files have to be provided as input at the top of the code.
+	The code saves a .mat file in the folder "code" which is exactly the format needed to run the next step.
+	2. sae.py: The next and last step is to run this python file. The previous step has already stored the input in the current folder (SAE_eval\code\). The name of this .mat file is to be added in the line
+		"awa = scipy.io.loadmat('sun.mat')"
+		in the main() function.
+		Run this file to get either ZSL or GZSL (depending on your input) for both cases of F->S and S->F mappings, where F is the visual space and S is the semantic space.
 
 We provide the python files used for training and testing our model:
+--------------------------------------------------------------------
 
 zsl_triplet_crossval.py
 =======================

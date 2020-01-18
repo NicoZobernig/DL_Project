@@ -11,10 +11,6 @@ from models import ContinuousMap, EncoderAttributes, DecoderAttributes
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-only_words', action='store_const', const=True, default=False,
-                        help='Only use class word embeddings')
-    parser.add_argument('-only_attributes', action='store_const', const=True, default=False,
-                        help='Only use class attributes')
 
     parser.add_argument('-use_resnet', action='store_const', const=True, default=False,
                         help='use ResNet101 image embeddings')
@@ -23,10 +19,11 @@ def parse_args():
     parser.add_argument('--n_epochs', type=int, default=100)
     parser.add_argument('--optimizer', type=str, default='sgd', help='\'sgd\'(default) or \'adam\'')
 
-    parser.add_argument('--learning_rate', type=float, default=5e-3, help='learning_rate: (default 5e-3)')
-    parser.add_argument('--alphas', nargs='+', type=float, default=[40, 1e-3, 1e-3])
-    parser.add_argument('--margin', type=int, default=3)
-    parser.add_argument('--gamma', type=float, default=0.3)
+    parser.add_argument('--learning_rate', type=float, default=5e-3)
+    parser.add_argument('--alphas', nargs='+', type=float, default=[40, 1e-3, 1e-3],
+                        help='weight parameters of loss metric - surjectivity - l2 regularization')
+    parser.add_argument('--margin', type=int, default=3, help='margin of triplet loss')
+    parser.add_argument('--gamma', type=float, default=0.3, help='mixture parameter of class embedding and attributes')
     parser.add_argument('--momentum', type=float, default=0.55)
     parser.add_argument('--weight_decay', type=float, default=3e-3)
 
