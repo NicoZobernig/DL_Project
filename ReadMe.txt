@@ -86,7 +86,18 @@ We provide the optimal parameter values for the model for each dataset:
 -----------------------------------------------------------------------
 APY: 	
 
-AWA2: python zsl_triplet_test.py Data/AwA2/ --batch_size 128 --n_epochs 50 --optimizer sgd --learning_rate 5e-3 --alphas 40 1e-3 1e-3 --margin 3 --gamma 0.3 --momentum 0.55 --weight_decay 3e-3
+AWA2:
+    Triplet: Words only - attributes only - attributes + words:
+    python zsl_triplet_test.py Data/AwA2/ --batch_size 128 --n_epochs 50 --optimizer sgd --learning_rate 5e-3 --alphas 40 1e-3 1e-3 --margin 3 --gamma 0.3 --momentum 0.55 --weight_decay 3e-3
+
+    L2: attributes + words:
+    python zsl_L2_test.py Data/AwA2/ --batch_size 128 --n_epochs 50 --optimizer sgd --learning_rate 5e-3 --alphas 40 1e-3 1e-3  --gamma 0.3 --momentum 0.55 --weight_decay 3e-3
+
+    L2 baseline: words only - attributes only - attributes + words:
+    python zsl_linear_test.py Data/AwA2/ --batch_size 128 --n_epochs 50 --optimizer sgd --learning_rate 5e-3 --alphas 40 1e-3 1e-3  --gamma 0.3 --momentum 0.55 --weight_decay 3e-3
+
+    Triplet Visual: attributes + words:
+    python zsl_triplet_visual_test.py  Data/CUB/ --n_epochs 50 --alphas 100 6e-4 1e-3 --learning_rate 5e-2 --margin 0 --gamma 0.5 --momentum 0.9  --weight_decay 1e-2
 
 CUB:
     Triplet: Words only - attributes only - attributes + words:
@@ -99,7 +110,40 @@ CUB:
     python zsl_linear_test.py  Data/CUB/  --batch_size 128 --n_epochs 50 --optimizer sgd --alphas 5000 0 1e-4 --learning_rate 1e-2   --momentum 0.9 --weight_decay 1e-3
 
     Triplet Visual: attributes + words:
-    python zsl_triplet_visual_test.py  Data/CUB/ --n_epochs 50 --alphas 100 6e-4 1e-2 --learning_rate 5e-2 --margin 0 --gamma 0.8 --momentum 0.9  --weight_decay 1e-2
+    python zsl_triplet_visual_test.py  Data/CUB/ --n_epochs 50 --alphas 100 6e-4 1e-3 --learning_rate 5e-2 --margin 0 --gamma 0.8 --momentum 0.9  --weight_decay 1e-2
 
 
-SUN:	
+SUN:
+
+
+
+UTILS
+-----
+
+generate_image_embeddings.py
+============================
+- script that computes iRevnet embeddings, the following values need to be adapted to the respective paths
+
+    dataset_path='Data/CUB/'
+    has_bounding_box = True
+    image_path ='Data/CUB_200_2011/CUB_200_2011/images/'
+
+- the script expects a file 'filenames_labels.txt' that contains the labels and filenames in the format used for the zsldataset
+
+
+download_irevnet_pretrained.py
+==============================
+- downloads a pretrained iRevNet Model
+
+
+split_data.py
+=============
+- Function to split a dataset in our zsldataset format into train, test or validation sets:
+- It expects the following parameters:
+    dataset=<DATASET PATH>: path of the zsldataset
+    class_names_file=<filename>: filename that contains list of classnames (one classname per line)
+     new_dataset_folder_name=<NEW DATASET PATH>: folder where the new dataset will be created
+- the new dataset consists of a subset of classes that are matched with the given list
+- the function splits both files for iRevNet and ResNet embeddings and the filenames_labels.txt file
+
+

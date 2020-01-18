@@ -57,22 +57,26 @@ def pad_and_resize(img, desired_size):
 
 
 dataset_path='Data/CUB/'
+has_bounding_box = True
 image_path ='Data/CUB_200_2011/CUB_200_2011/images/'
 filenames = pd.read_csv(dataset_path+'/filenames_labels.txt', index_col=0, header=0)
-
-bounding_boxes = pd.read_csv(dataset_path+'bounding_boxes.txt',delimiter=' ', index_col=0, header=None)
 embeddings = []
+
+if has_bounding_box:
+    bounding_boxes = pd.read_csv(dataset_path+'bounding_boxes.txt',delimiter=' ', index_col=0, header=None)
+
 
 for i in range(0, len(filenames)):
     img = Image.open(image_path + filenames.iloc[i][0])
 
-    #Convert bounding box from (left,upper,width,heigth) to (left, upper, right, lower)
-    left = bounding_boxes.iloc[i][1]
-    upper = bounding_boxes.iloc[i][2]
-    right = left + bounding_boxes.iloc[i][3]
-    lower = upper + bounding_boxes.iloc[i][4]
+    if has_bounding_box:
+        #Convert bounding box from (left,upper,width,heigth) to (left, upper, right, lower)
+        left = bounding_boxes.iloc[i][1]
+        upper = bounding_boxes.iloc[i][2]
+        right = left + bounding_boxes.iloc[i][3]
+        lower = upper + bounding_boxes.iloc[i][4]
+        img = img.crop((left, upper, right, lower))
 
-    img = img.crop((left, upper, right, lower))
     img = pad_and_resize(img, 224)
 
     with torch.no_grad():
